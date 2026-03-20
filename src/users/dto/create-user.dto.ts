@@ -4,18 +4,18 @@ export class CreateUserDto {
   @IsEmail()
   @IsString()
   @IsNotEmpty()
-  readonly email: string | undefined;
+  readonly email!: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
-  readonly password: string | undefined;
+  readonly password!: string;
 
   @IsString()
   @IsNotEmpty()
-  readonly name: string | undefined;
+  readonly name!: string;
 
   @IsNumber()
   @Max(100)
-  readonly age: number | undefined;
+  readonly age?: number;
 }

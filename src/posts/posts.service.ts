@@ -19,7 +19,7 @@ export class PostsService {
   async getAllPosts(): Promise<IPost[]> {
     return this.postModel
       .find()
-      .populate('author', 'name email') // ¡Clave para relaciones!
+      .populate('author', 'name email') // para realizar una relacion con el modelo de usuarios y obetener el nombre y email.
       .exec();
   }
 
