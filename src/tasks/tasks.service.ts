@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { ITask } from './interfaces/task.interface';
+import { Model } from 'mongoose';
 
 export interface User {
   name: string;
@@ -13,32 +15,32 @@ export interface Task {
 
 @Injectable()
 export class TasksService {
-  private tasks: Task[] = [];
+  constructor(
+    @Inject('TASK_MODEL')
+    private taskModel: Model<ITask>,
+  ) {}
 
-  getTasks() {
-    return this.tasks;
+  getTasks(): Promise<ITask[]> {
+    return this.taskModel.find().exec();
   }
 
-  getTask(id: number) {
-    const taskFound = this.tasks.find((task) => task.id === id);
+  async getTask(id: number): Promise<ITask> {
+    const taskFound = await this.taskModel.findById(id).exec();
 
     if (!taskFound) {
-      return new NotFoundException(`Task with id ${id} not found`);
+      throw new NotFoundException(`Tarea con el id ${id} no existe`);
     }
 
     return taskFound;
   }
 
-  createTask(task: CreateTaskDto) {
-    this.tasks.push({
-      ...task,
-      id: this.tasks.length + 1,
-    });
-    return task;
+  createTask(createTaskDto: CreateTaskDto): Promise<ITask> {
+    const createdTask = new this.taskModel(createTaskDto);
+    return createdTask.save();
   }
 
   updateTask(task: UpdateTaskDto) {
-    console.log(task)
+    console.log(task);
     return 'actualizando tareas';
   }
 
