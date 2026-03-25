@@ -33,8 +33,6 @@ export class UsersModule implements NestModule {
   }
 }
 
-
-
 // import {
 //   MiddlewareConsumer,
 //   Module,

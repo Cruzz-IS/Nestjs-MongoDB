@@ -3,7 +3,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { Model } from 'mongoose';
 import { IUser } from './interfaces/user.interface';
 import * as bcrypt from 'bcrypt';
-// import { PrismaService } from 'src/prisma.service';
+import { UpdateUserDto } from './dto/update-user-dto';
 
 @Injectable()
 export class UsersService {
@@ -39,13 +39,33 @@ export class UsersService {
     return user;
   }
 
+  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<IUser> {
+    const updateData = { ...updateUserDto };
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    const user = await this.userModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    return user;
+  }
+
+  async removeUser(id: string): Promise<{ deleted: boolean }> {
+    const result = await this.userModel.findByIdAndDelete(id).exec();
+    if (!result) throw new NotFoundException('Usuario no encontrado');
+    return { deleted: true };
+  }
+
+
+
+
   // async updateUser(id: string, updateUserDto: any): Promise<IUser> {
   //   return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true }).exec();
   // }
 
-  async removeUser(id: string) {
-    return this.userModel.findByIdAndDelete(id).exec();
-  }
+  // async removeUser(id: string) {
+  //   return this.userModel.findByIdAndDelete(id).exec();
+  // }
   // private users = [
   //   { id: 1, name: 'John Doe', email: 'john.doe@example.com' },
   //   { id: 2, name: 'Jane Doe', email: 'jane.doe@example.com' },
