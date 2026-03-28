@@ -1,0 +1,41 @@
+name: NestJS CI/CD
+
+on:
+  push:
+    branches: [ main ] # Se activa al subir a la rama main
+  pull_request:
+    branches: [ main ] # Se activa al crear un PR
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # Usamos un servidor Linux virtual
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4 # Descarga tu código
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Versión de Node
+          
+      - name: Instalar dependencias
+        run: npm install
+        
+      - name: Correr tests unitarios
+        run: npm run test
+        
+      - name: Correr tests e2e
+        run: npm run test:e2e
+        env:
+          MONGODB_URI: mongodb://localhost:27017/test
+
+      - name: Setup k6
+        uses: grafana/setup-k6@v1
+
+      - name: Correr tests de carga 
+        run: k6 run load-test.js

@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Model } from 'mongoose';
 import { IUser } from './interfaces/user.interface';
@@ -17,8 +23,10 @@ export class UsersService {
         password: hashedPassword,
       });
       return await newUser.save();
-    } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 11000) {
+    } catch (error: any) {
+      // Usamos any para capturar la estructura del error de Mongo
+      // Verificamos directamente el código 11000
+      if (error && error.code === 11000) {
         throw new ConflictException('El correo electrónico ya está registrado');
       }
       throw new InternalServerErrorException();
@@ -29,7 +37,7 @@ export class UsersService {
   }
 
   async getUsers(): Promise<IUser[]> {
-    return this.userModel.find().exec();
+    return this.userModel.find().lean().exec();
   }
 
   async getUser(id: string): Promise<IUser> {
@@ -45,7 +53,9 @@ export class UsersService {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
-    const user = await this.userModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+    const user = await this.userModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .exec();
     if (!user) throw new NotFoundException('Usuario no encontrado');
     return user;
   }
@@ -55,9 +65,6 @@ export class UsersService {
     if (!result) throw new NotFoundException('Usuario no encontrado');
     return { deleted: true };
   }
-
-
-
 
   // async updateUser(id: string, updateUserDto: any): Promise<IUser> {
   //   return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true }).exec();

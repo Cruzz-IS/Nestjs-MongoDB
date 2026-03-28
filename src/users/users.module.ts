@@ -9,7 +9,7 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { LoggerMiddleware } from './logger/logger.middleware';
 import { AuthMiddleware } from './auth/auth.middleware';
-import { DatabaseModule } from 'src/database/database.module';
+import { DatabaseModule } from '../database/database.module';
 import { usersProviders } from './users.providers';
 
 @Module({
