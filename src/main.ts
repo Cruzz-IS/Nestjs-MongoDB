@@ -9,9 +9,15 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-  }));
+  app.enableCors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
+  });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Api en NestJS con MongoDB')
@@ -22,10 +28,11 @@ async function bootstrap() {
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`Iniciando la API en el puerto→ http://localhost:${port}/api/v1`);
 }
 bootstrap();
-
 
 // Sin swagger
 // async function bootstrap() {
@@ -35,4 +42,3 @@ bootstrap();
 
 //   await app.listen(process.env.PORT ?? 3000);
 // }
-
