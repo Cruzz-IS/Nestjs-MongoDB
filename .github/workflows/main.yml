@@ -36,11 +36,22 @@ jobs:
         env:
           MONGODB_URI: mongodb://localhost:27017/test
 
-      - name: Start NestJS App in background
-        run: npm run start & # Lo corremos de fondo para que k6 pueda atacarlo
+      - name: Start NestJS App 
+        # Lo corremos de fondo para que k6 pueda atacarlo
+        run: |
+          # Iniciamos la app y guardamos los logs en un archivo para ver si hay errores
+          npm run start > app.log 2>&1 & 
+          
+          # Esperamos a que el PUERTO responda (independientemente de si devuelve 401 o 200)
+          # Usamos tcp:3000 que es más confiable que http si hay seguridad de por medio
+          npx wait-on tcp:3000 --timeout 60000
         env:
           MONGO_URI: mongodb://localhost:27017/test_db
           PORT: 3000
+          
+      - name: Mostrar logs de error si la app no inició
+        if: failure()
+        run: cat app.log
 
       - name: Wait for NestJS to be ready
         run: npx wait-on http://localhost:3000/posts --timeout 30000
