@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import * as dotenv from 'dotenv';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../src/users/users.service';
 
 dotenv.config();
 
