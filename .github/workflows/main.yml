@@ -32,7 +32,7 @@ jobs:
         run: npm run test
         
       - name: Correr tests e2e
-        run: npm run test:e2e
+        run: npm run test:e2e -- --forceExit
         env:
           MONGODB_URI: mongodb://localhost:27017/test
 
