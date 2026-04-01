@@ -4,10 +4,13 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+// import * as cookieParser from 'cookie-parser';
 
 // main con swagger
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // app.use(cookieParser());
 
   app.enableCors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') ?? '*',
@@ -24,7 +27,9 @@ async function bootstrap() {
     .setDescription('Descripcion de la App')
     .setVersion('1.0')
     .addTag('App')
+    .addBearerAuth() // Permite probar el Access Token en Swagger
     .build();
+
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
 

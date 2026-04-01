@@ -13,6 +13,7 @@ export const UserSchema = new mongoose.Schema(
     password: { type: String, required: true, select: false }, // 'select: false' por seguridad
     role: { type: String, default: 'user' },
     age: { type: Number },
+    refreshToken: { type: String, default: null },
   },
   { timestamps: true },
 );

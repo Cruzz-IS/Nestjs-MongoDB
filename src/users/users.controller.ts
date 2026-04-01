@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user-dto';
+import { JWTAuthGuard } from 'src/auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -23,6 +24,7 @@ export class UsersController {
   }
 
   @ApiTags('users')
+  @UseGuards(JWTAuthGuard)
   @Get(':id')
   getUser(@Param('id') id: string) {
     return this.usersService.getUser(id);
