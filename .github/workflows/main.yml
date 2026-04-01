@@ -43,7 +43,7 @@ jobs:
           PORT: 3000
 
       - name: Wait for NestJS to be ready
-        run: npx wait-on http://localhost:3000/users --timeout 30000
+        run: npx wait-on http://localhost:3000/posts --timeout 30000
 
       - name: Setup k6
         uses: grafana/setup-k6-action@v1 # Configura k6 para pruebas de carga
