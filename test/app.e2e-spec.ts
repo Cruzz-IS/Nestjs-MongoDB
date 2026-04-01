@@ -10,6 +10,7 @@ dotenv.config();
 describe('Users Module (e2e)', () => {
   let app: INestApplication;
   let createdUserId: string;
+  let userService: UsersService;
   const authHeader = 'xyz123';
 
   beforeAll(async () => {
@@ -25,7 +26,7 @@ describe('Users Module (e2e)', () => {
     await app.init();
 
     // Borrar todos los usuarios antes de empezar los tests
-    const userService = moduleFixture.get(UsersService);
+    userService = moduleFixture.get<UsersService>(UsersService);
     await userService['userModel'].deleteMany({});
   });
 
@@ -92,8 +93,8 @@ describe('Users Module (e2e)', () => {
 
   afterAll(async () => {
     // Limpiamos los usuarios creados durante las pruebas
-    if (UsersService) {
-      await UsersService['userModel'].deleteMany({
+    if (userService && userService['userModel']) {
+      await userService['userModel'].deleteMany({
         email: { $regex: /@example\.com|@test\.com|unah\.hn/i },
       });
     }
