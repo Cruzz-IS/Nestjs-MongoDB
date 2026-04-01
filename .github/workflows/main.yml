@@ -16,12 +16,14 @@ jobs:
           - 27017:27017
 
     steps:
-      - uses: actions/checkout@v4 # Descarga tu código
+      - name: Checkout code
+        uses: actions/checkout@v4 # Descarga el codigo del repositorio
       
-      - name: Use Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20' # Versión de Node
+          cache: 'npm'
           
       - name: Instalar dependencias
         run: npm install
@@ -34,8 +36,17 @@ jobs:
         env:
           MONGODB_URI: mongodb://localhost:27017/test
 
-      - name: Setup k6
-        uses: grafana/setup-k6@v1
+      - name: Start NestJS App in background
+        run: npm run start & # Lo corremos de fondo para que k6 pueda atacarlo
+        env:
+          MONGO_URI: mongodb://localhost:27017/test_db
+          PORT: 3000
 
-      - name: Correr tests de carga 
+      - name: Wait for NestJS to be ready
+        run: npx wait-on http://localhost:3000/users --timeout 30000
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1 # Configura k6 para pruebas de carga
+
+      - name: Correr tests de carga con K6
         run: k6 run load-test.js
