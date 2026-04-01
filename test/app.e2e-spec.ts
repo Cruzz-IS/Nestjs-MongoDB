@@ -50,8 +50,8 @@ describe('Users Module (e2e)', () => {
         .send({
           name: 'Miguel E2E',
           email: `test_${Date.now()}@unah.hn`,
-          password: 'password123', 
-          age: 22, 
+          password: 'password123',
+          age: 22,
         })
         .expect(201);
 
@@ -91,16 +91,14 @@ describe('Users Module (e2e)', () => {
   });
 
   afterAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    const userService = moduleFixture.get(UsersService);
-    // Borramos los usuarios creados por los tests
-    await userService['userModel'].deleteMany({
-      email: { $regex: /@example\.com|@test\.com/i },
-    });
-
+    // Limpiamos los usuarios creados durante las pruebas
+    if (UsersService) {
+      await UsersService['userModel'].deleteMany({
+        email: { $regex: /@example\.com|@test\.com|unah\.hn/i },
+      });
+    }
+    // Cerramos la aplicación principal
+    // Esto cerrará automáticamente las conexiones a la DB de ese módulo
     await app.close();
   });
 });
