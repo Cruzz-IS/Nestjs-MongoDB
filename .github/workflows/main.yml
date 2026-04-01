@@ -39,7 +39,7 @@ jobs:
       - name: Start NestJS App 
         # Lo corremos de fondo para que k6 pueda atacarlo
         run: |
-          # Inyectamos las variables directamente en el comando para que no haya duda
+          # Inyectamos las variables directamente y luego corremos la app
           MONGO_URI=mongodb://localhost:27017/test_db PORT=3000 npm run start > app.log 2>&1 & 
           
           # Esperamos a que el puerto 3000 esté abierto (60 segundos por si acaso)
@@ -49,7 +49,7 @@ jobs:
           MONGO_URI: mongodb://localhost:27017/test_db
           PORT: 3000
 
-      - name: Mostrar logs de error si la app no inició
+      - name: Mostrar logs de error si la app no se inició
         if: failure()
         run: cat app.log
 
