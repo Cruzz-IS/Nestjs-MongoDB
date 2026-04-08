@@ -7,4 +7,6 @@ export interface IUser extends Document {
   readonly role: string;
   readonly age: number;
   readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly refreshToken: string;
 }

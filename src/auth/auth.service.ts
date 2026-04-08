@@ -1,13 +1,17 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+// import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -16,17 +20,35 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // Generamos tokens al validar
+    const tokens = await this.getTokens(user._id.toString(), user.email);
+
+    // Actualizamos el refresh token en la BD
+    await this.usersService.updateRefreshToken(
+      user._id.toString(),
+      tokens.refreshToken,
+    );
+
+    // const isPasswordValid = await bcrypt.compare(password, user.password);
+    // if (!isPasswordValid) {
+    //   throw new UnauthorizedException('Credenciales inválidas');
+    // }
+
     // Limpieza segura del objeto usuario para evitar exponer la contraseña
-    const userObj = user.toObject ? user.toObject() : user;
+    // const userObj = user.toObject ? user.toObject() : user;
 
     // Eliminamos la contraseña del objeto que devolveremos
-    const { password: _, ...result } = userObj;
-    return result;
+    const {
+      password: _,
+      refreshToken: __,
+      ...result
+    } = user.toObject ? user.toObject() : user;
+    return { user: result, tokens };
   }
 
   async signIn(user: any): Promise<{ access_token: string }> {
@@ -36,67 +58,68 @@ export class AuthService {
     };
   }
 
-  // async register(name: string, email: string, password: string) {
-  //   const hashedPassword = await bcrypt.hash(password, 10);
-  //   return this.usersService.createUser(name, email, hashedPassword);
-  // }
+  async signUp(createUserDto: CreateUserDto) {
+    const newUser = await this.usersService.createUser(createUserDto);
 
-  //   async validateUser(email: string, password: string): Promise<any> {
-  //   const user = await this.usersService.findByEmail(email);
-  //   if (!user) {
-  //     throw new UnauthorizedException('Credenciales inválidas');
-  //   }
+    const tokens = await this.getTokens(newUser._id.toString(), newUser.email);
 
-  //   const isPasswordValid = await bcrypt.compare(password, user.password);
-  //   if (!isPasswordValid) {
-  //     throw new UnauthorizedException('Credenciales inválidas');
-  //   }
+    // Guardamos el refresh token hasheado en la BD
+    await this.usersService.updateRefreshToken(
+      newUser._id.toString(),
+      tokens.refreshToken,
+    );
 
-  //   // Limpieza segura del objeto usuario para evitar exponer la contraseña
-  //   const userObj = user.toObject ? user.toObject() : user;
-
-  //   // Eliminamos la contraseña del objeto que devolveremos
-  //   const { password: _, ...result } = userObj;
-  //   return result;
-  // }
-
-  // async signIn(user: any): Promise<{ access_token: string }> {
-  //   const payload = { sub: user._id, email: user.email, role: user.role };
-  //   return {
-  //     access_token: await this.jwtService.sign(payload),
-  //   };
-  // }
-
-  // async getTokens(userId: string, email: string) {
-  //   const [at, rt] = await Promise.all([
-  //     this.jwtService.signAsync({ sub: userId, email }, { expiresIn: '15m' }),
-  //     this.jwtService.signAsync({ sub: userId, email }, { expiresIn: '7d' }),
-  //   ]);
-  //   return { access_token: at, refresh_token: rt };
-  // }
-
-  // async refreshTokens(userId: string, rt: string) {
-  //   const user = await this.usersService.getUser(userId);
-  //   if (!user || !(user as any).refreshTokenHash)
-  //     throw new ForbiddenException('Access Denied');
-
-  //   const rtMatches = await bcrypt.compare(rt, (user as any).refreshTokenHash);
-  //   if (!rtMatches) throw new ForbiddenException('Access Denied');
-
-  //   const tokens = await this.getTokens(user._id.toString(), user.email);
-  //   await this.updateRefreshToken(user._id.toString(), tokens.refresh_token);
-  //   return tokens;
-  // }
-
-  // async updateRefreshToken(userId: string, rt: string) {
-  //   const hash = await bcrypt.hash(rt, 10);
-  //   await this.usersService.updateUser(userId, {
-  //     refreshTokenHash: hash,
-  //   } as any);
-  // }
+    return tokens;
+  }
 
   async logout(userId: string) {
-    // Borramos el hash del refresh token
-    return this.usersService.updateUser(userId, { refreshTokenHash: null } as any);
+    // Ponemos el refresh token en null para invalidar la sesión
+    return this.usersService.updateRefreshToken(userId, null);
+  }
+
+  async refreshTokens(userId: string, refreshToken: string) {
+    const user = await this.usersService.getUser(userId);
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Acceso denegado');
+    }
+
+    // Verificamos que el refresh token coincida con el hasheado en BD
+    const refreshTokenMatches = await argon2.verify(
+      user.refreshToken,
+      refreshToken,
+    );
+    if (!refreshTokenMatches) {
+      throw new UnauthorizedException('Acceso denegado');
+    }
+
+    // Si coincide, generamos nuevos tokens (rotación de tokens)
+    const tokens = await this.getTokens(user._id.toString(), user.email);
+    await this.usersService.updateRefreshToken(
+      user._id.toString(),
+      tokens.refreshToken,
+    );
+
+    return tokens;
+  }
+
+  private async getTokens(userId: string, email: string) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(
+        { sub: userId, email },
+        {
+          secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+          expiresIn: '15m',
+        },
+      ),
+      this.jwtService.signAsync(
+        { sub: userId, email },
+        {
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+          expiresIn: '7d',
+        },
+      ),
+    ]);
+
+    return { accessToken, refreshToken };
   }
 }

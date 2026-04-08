@@ -8,33 +8,56 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { Model } from 'mongoose';
 import { IUser } from './interfaces/user.interface';
-import * as bcrypt from 'bcrypt';
+// import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { UpdateUserDto } from './dto/update-user-dto';
 
 @Injectable()
 export class UsersService {
   constructor(@Inject('USER_MODEL') private userModel: Model<IUser>) {}
 
+  private async hashData(data: string) {
+    return await argon2.hash(data);
+  }
+
   async createUser(createUserDto: CreateUserDto): Promise<IUser> {
     try {
-      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+      // Argon2.hash genera automáticamente el salt y lo incluye en el hash final
+      const hashedPassword = await this.hashData(createUserDto.password);
+
       const newUser = new this.userModel({
         ...createUserDto,
         password: hashedPassword,
       });
+
       return await newUser.save();
     } catch (error: any) {
-      // Usamos any para capturar la estructura del error de Mongo
-      // Verificamos directamente el código 11000
+      // Mantenemos tu excelente manejo de errores de MongoDB
       if (error && error.code === 11000) {
         throw new ConflictException('El correo electrónico ya está registrado');
       }
-      throw new InternalServerErrorException();
+      throw new InternalServerErrorException('Error al crear el usuario');
     }
-
-    // const createdUser = new this.userModel(createUserDto);
-    // return createdUser.save();
   }
+
+  // creacion de usuario con la dependencia de bycrypt para el hash de la contraseña y manejo de errores específicos de MongoDB para evitar duplicados
+  // async createUser(createUserDto: CreateUserDto): Promise<IUser> {
+  //   try {
+  //     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+  //     const newUser = new this.userModel({
+  //       ...createUserDto,
+  //       password: hashedPassword,
+  //     });
+  //     return await newUser.save();
+  //   } catch (error: any) {
+  //     // Usamos any para capturar la estructura del error de Mongo
+  //     // Verificamos directamente el código 11000
+  //     if (error && error.code === 11000) {
+  //       throw new ConflictException('El correo electrónico ya está registrado');
+  //     }
+  //     throw new InternalServerErrorException();
+  //   }
+  // }
 
   async getUsers(): Promise<IUser[]> {
     return this.userModel.find().lean().exec();
@@ -47,15 +70,15 @@ export class UsersService {
     return user;
   }
 
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<IUser | null> {
     return this.userModel.findOne({ email }).select('+password').exec();
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<IUser> {
     const updateData = { ...updateUserDto };
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
-    }
+    // if (updateData.password) {
+    //   updateData.password = await bcrypt.hash(updateData.password, 10);
+    // }
 
     const user = await this.userModel
       .findByIdAndUpdate(id, updateData, { new: true })
@@ -70,26 +93,14 @@ export class UsersService {
     return { deleted: true };
   }
 
-  // async updateUser(id: string, updateUserDto: any): Promise<IUser> {
-  //   return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true }).exec();
-  // }
+  async updateRefreshToken(userId: string, refreshToken: string | null) {
+    // Si pasamos null seria el (logout) donde borramos el token. Si no, lo hasheamos.
+    const hashedRefreshToken = refreshToken
+      ? await this.hashData(refreshToken)
+      : null;
 
-  // async removeUser(id: string) {
-  //   return this.userModel.findByIdAndDelete(id).exec();
-  // }
-  // private users = [
-  //   { id: 1, name: 'John Doe', email: 'john.doe@example.com' },
-  //   { id: 2, name: 'Jane Doe', email: 'jane.doe@example.com' },
-  // ];
-
-  // getUsers() {
-  //   return this.users;
-  // }
-
-  // createUser(user: CreateUserDto) {
-  //   return {
-  //     ...user,
-  //     id: this.users.length + 1,
-  //   }
-  // }
+    return this.userModel.findByIdAndUpdate(userId, {
+      refreshToken: hashedRefreshToken,
+    });
+  }
 }

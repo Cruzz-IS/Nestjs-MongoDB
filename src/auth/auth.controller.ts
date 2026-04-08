@@ -7,10 +7,13 @@ import {
   UseGuards,
   Get,
   Request,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JWTAuthGuard } from './guards/auth.guard';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { RefreshTokenGuard } from './guards/refreshToken.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -26,8 +29,8 @@ export class AuthController {
       );
       return await this.authService.signIn(user);
     } catch (error) {
-      console.error('ERROR EN EL LOGIN:', error); 
-      throw error; 
+      console.error('ERROR EN EL LOGIN:', error);
+      throw error;
     }
   }
 
@@ -37,42 +40,29 @@ export class AuthController {
     return req.user;
   }
 
-  //   @HttpCode(HttpStatus.OK)
-  // @Post('login')
-  // async signIn(
-  //   @Body() loginDto: LoginDto,
-  //   @Res({ passthrough: true }) res: express.Response,
-  // ) {
-  //   try {
-  //     const user = await this.authService.validateUser(
-  //       loginDto.email,
-  //       loginDto.password,
-  //     );
-  //     const tokens = await this.authService.getTokens(user._id, user.email);
+  @Post('register')
+  async register(@Body() createUserDto: CreateUserDto) {
+    return this.authService.signUp(createUserDto);
+  }
 
-  //     await this.authService.updateRefreshToken(user._id, tokens.refresh_token);
-  //     res.cookie('refresh_token', tokens.refresh_token, {
-  //       httpOnly: true,
-  //       secure: process.env.NODE_ENV === 'production',
-  //       sameSite: 'strict',
-  //       maxAge: 7 * 24 * 60 * 60 * 1000,
-  //     });
+  @Post('refresh')
+  async refresh(@Body() body: { userId: string; refreshToken: string }) {
+    return this.authService.refreshTokens(body.userId, body.refreshToken);
+  }
 
-  //     return {
-  //       access_token: tokens.access_token,
-  //       userId: user._id,
-  //     };
-  //   } catch (error) {
-  //     console.error('ERROR EN LOGIN:', error);
-  //     throw error;
-  //   }
-  // }
+  @UseGuards(JWTAuthGuard)
+  @Get('logout')
+  logout(@Req() req: any) {
+    this.authService.logout(req.user['sub']);
+  }
 
-  // @Post('refresh')
-  // async refresh(@Req() req: any, @Res({ passthrough: true }) res: Response) {
-  //   const refreshToken = req.cookies['refresh_token'];
-  //   if (!refreshToken) throw new UnauthorizedException();
-  // }
+  @UseGuards(RefreshTokenGuard)
+  @Get('refresh')
+  refreshTokens(@Req() req: any) {
+    const userId = req.user['sub'];
+    const refreshToken = req.user['refreshToken'];
+    return this.authService.refreshTokens(userId, refreshToken);
+  }
 
   // // @UseGuards(JWTAuthGuard)
   // // @Get('profile')
