@@ -3,7 +3,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UpdateUserDto } from './dto/update-user-dto';
-import { JWTAuthGuard } from 'src/auth/guards/auth.guard';
+import { JWTAuthGuard } from '../auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
