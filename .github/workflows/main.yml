@@ -34,7 +34,14 @@ jobs:
       - name: Correr tests e2e
         run: npm run test:e2e -- --forceExit
         env:
-          MONGODB_URI: mongodb://localhost:27017/test
+          MONGODB_URI: mongodb://localhost:27017/test_db
+          JWT_ACCESS_SECRET: test_access_secret_key_123
+          JWT_REFRESH_SECRET: test_refresh_secret_key_456
+          PORT: 3000
+
+      - name: Mostrar logs de error si la app no se inició
+        if: failure()
+        run: cat app.log || echo "No se encontró el archivo app.log"
 
       - name: Start NestJS App 
         # Lo corremos de fondo para que k6 pueda atacarlo
