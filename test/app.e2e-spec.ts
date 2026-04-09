@@ -11,7 +11,15 @@ describe('Users Module (e2e)', () => {
   let app: INestApplication;
   let createdUserId: string;
   let userService: UsersService;
-  const authHeader = 'xyz123';
+  // const authHeader = 'xyz123';
+  let accessToken: string;
+
+  const testUser = {
+    name: 'Admin Test',
+    email: 'admin.e2e@unah.hn',
+    password: 'Password123!',
+    age: 30,
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -25,15 +33,41 @@ describe('Users Module (e2e)', () => {
     );
     await app.init();
 
-    // Borrar todos los usuarios antes de empezar los tests
     userService = moduleFixture.get<UsersService>(UsersService);
     await userService['userModel'].deleteMany({});
+
+    // Registramos un usuario inicial para poder loguearnos
+    await request(app.getHttpServer()).post('/auth/register').send(testUser);
+
+    // Hacemos login para obtener un Access Token real
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: testUser.email,
+        password: testUser.password,
+      });
+
+    accessToken = loginResponse.body.tokens.accessToken;
+  });
+
+  it('/users (POST) - Error 401 si no hay token', () => {
+    return (
+      request(app.getHttpServer())
+        .post('/users')
+        .send({
+          name: 'Persona Sin Token',
+          email: 'sin.token@test.com',
+          password: 'password123',
+          age: 30,
+        })
+        .expect(401)
+    );
   });
 
   it('/users (POST) - Error 400 por email inválido', () => {
     return request(app.getHttpServer())
       .post('/users')
-      .set('Authorization', authHeader)
+      .set('Authorization', `Bearer ${accessToken}`)
       .send({
         name: 'Miguel',
         email: 'no-es-email',
@@ -47,7 +81,7 @@ describe('Users Module (e2e)', () => {
     it('Debería crear un usuario (POST)', async () => {
       const response = await request(app.getHttpServer())
         .post('/users')
-        .set('Authorization', authHeader)
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({
           name: 'Miguel E2E',
           email: `test_${Date.now()}@unah.hn`,
@@ -63,7 +97,7 @@ describe('Users Module (e2e)', () => {
     it('Debería obtener el usuario creado (GET /:id)', () => {
       return request(app.getHttpServer())
         .get(`/users/${createdUserId}`)
-        .set('Authorization', authHeader)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
         .expect((res) => {
           expect(res.body.name).toBe('Miguel E2E');
@@ -75,7 +109,7 @@ describe('Users Module (e2e)', () => {
       // Como UpdateUserDto es PartialType, aquí sí podemos enviar solo un campo similar a un PATCH
       return request(app.getHttpServer())
         .put(`/users/${createdUserId}`)
-        .set('Authorization', authHeader)
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ name: 'Miguel Actualizado' })
         .expect(200)
         .expect((res) => {
@@ -86,7 +120,7 @@ describe('Users Module (e2e)', () => {
     it('Debería eliminar el usuario (DELETE /:id)', () => {
       return request(app.getHttpServer())
         .delete(`/users/${createdUserId}`)
-        .set('Authorization', authHeader)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(204);
     });
   });

@@ -6,6 +6,7 @@ import { UpdateUserDto } from './dto/update-user-dto';
 import { JWTAuthGuard } from '../auth/guards/auth.guard';
 
 @Controller('users')
+@UseGuards(JWTAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -24,7 +25,6 @@ export class UsersController {
   }
 
   @ApiTags('users')
-  @UseGuards(JWTAuthGuard)
   @Get(':id')
   getUser(@Param('id') id: string) {
     return this.usersService.getUser(id);
