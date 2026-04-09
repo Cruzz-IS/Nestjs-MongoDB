@@ -39,20 +39,12 @@ jobs:
           JWT_REFRESH_SECRET: test_refresh_secret_key_456
           PORT: 3000
 
-      - name: Mostrar logs de error si la app no se inició
-        if: failure()
-        run: cat app.log || echo "No se encontró el archivo app.log"
-
       - name: Start NestJS App 
         # Lo corremos de fondo para que k6 pueda atacarlo
         run: |
-          # Inyectamos las variables directamente y luego corremos la app
-          MONGODB_URI=mongodb://localhost:27017/test_db \
-          PORT=3000 \
-          JWT_ACCESS_SECRET=test_access_secret_key_123 \
-          JWT_REFRESH_SECRET=test_refresh_secret_key_456 \
+          # Iniciamos la app en segundo plano
           npm run start > app.log 2>&1 & 
-          
+          # Esperamos a que el puerto 3000 responda
           npx wait-on tcp:3000 --timeout 60000
         env:
           # Mantenemos estas por si acaso, pero la línea de arriba es la que manda
@@ -60,6 +52,14 @@ jobs:
           JWT_ACCESS_SECRET: test_access_secret_key_123
           JWT_REFRESH_SECRET: test_refresh_secret_key_456
           PORT: 3000
+
+      - name: Crear usuario para prueba de carga (k6)
+        # Esto crea el usuario jose323@gmail.com en el MongoDB de la Action
+        # para que k6 pueda hacer login exitosamente.
+        run: |
+          curl -X POST http://localhost:3000/auth/register \
+          -H "Content-Type: application/json" \
+          -d '{"name":"Jose Test","email":"jose323@gmail.com","password":"xyz123","age":30}'
 
       - name: Mostrar logs de error si la app no se inició
         if: failure()
