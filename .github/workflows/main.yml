@@ -40,13 +40,18 @@ jobs:
         # Lo corremos de fondo para que k6 pueda atacarlo
         run: |
           # Inyectamos las variables directamente y luego corremos la app
-          MONGO_URI=mongodb://localhost:27017/test_db PORT=3000 npm run start > app.log 2>&1 & 
+          MONGODB_URI=mongodb://localhost:27017/test_db \
+          PORT=3000 \
+          JWT_ACCESS_SECRET=test_access_secret_key_123 \
+          JWT_REFRESH_SECRET=test_refresh_secret_key_456 \
+          npm run start > app.log 2>&1 & 
           
-          # Esperamos a que el puerto 3000 esté abierto (60 segundos por si acaso)
           npx wait-on tcp:3000 --timeout 60000
         env:
           # Mantenemos estas por si acaso, pero la línea de arriba es la que manda
-          MONGO_URI: mongodb://localhost:27017/test_db
+          MONGODB_URI: mongodb://localhost:27017/test_db
+          JWT_ACCESS_SECRET: test_access_secret_key_123
+          JWT_REFRESH_SECRET: test_refresh_secret_key_456
           PORT: 3000
 
       - name: Mostrar logs de error si la app no se inició
