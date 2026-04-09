@@ -25,37 +25,33 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    // Generamos tokens al validar
-    const tokens = await this.getTokens(user._id.toString(), user.email);
-
-    // Actualizamos el refresh token en la BD
-    await this.usersService.updateRefreshToken(
-      user._id.toString(),
-      tokens.refreshToken,
-    );
-
     // const isPasswordValid = await bcrypt.compare(password, user.password);
     // if (!isPasswordValid) {
     //   throw new UnauthorizedException('Credenciales inválidas');
     // }
 
     // Limpieza segura del objeto usuario para evitar exponer la contraseña
-    // const userObj = user.toObject ? user.toObject() : user;
+    const userObj = user.toObject ? user.toObject() : user;
 
     // Eliminamos la contraseña del objeto que devolveremos
-    const {
-      password: _,
-      refreshToken: __,
-      ...result
-    } = user.toObject ? user.toObject() : user;
-    return { user: result, tokens };
+    const { password: _, refreshToken: __, ...result } = userObj;
+    return result;
   }
 
-  async signIn(user: any): Promise<{ access_token: string }> {
-    const payload = { sub: user._id, email: user.email, role: user.role };
-    return {
-      access_token: await this.jwtService.sign(payload),
-    };
+  async signIn(user: any) {
+    const tokens = await this.getTokens(user._id.toString(), user.email);
+
+    // Esto llamará al método que acabamos de modificar arriba
+    await this.usersService.updateRefreshToken(
+      user._id.toString(),
+      tokens.refreshToken,
+    );
+
+    return { tokens, user };
+    // const payload = { sub: user._id, email: user.email, role: user.role };
+    // return {
+    //   access_token: await this.jwtService.sign(payload),
+    // };
   }
 
   async signUp(createUserDto: CreateUserDto) {
@@ -79,20 +75,24 @@ export class AuthService {
 
   async refreshTokens(userId: string, refreshToken: string) {
     const user = await this.usersService.getUser(userId);
+    
     if (!user || !user.refreshToken) {
-      throw new UnauthorizedException('Acceso denegado');
+      throw new UnauthorizedException('Acceso denegado: No hay sesión activa');
     }
 
-    // Verificamos que el refresh token coincida con el hasheado en BD
+    if (!user.refreshToken.startsWith('$')) {
+      throw new UnauthorizedException('Error interno: Hash de sesión inválido');
+    }
+
     const refreshTokenMatches = await argon2.verify(
       user.refreshToken,
       refreshToken,
     );
+
     if (!refreshTokenMatches) {
-      throw new UnauthorizedException('Acceso denegado');
+      throw new UnauthorizedException('Acceso denegado: Token no coincide');
     }
 
-    // Si coincide, generamos nuevos tokens (rotación de tokens)
     const tokens = await this.getTokens(user._id.toString(), user.email);
     await this.usersService.updateRefreshToken(
       user._id.toString(),

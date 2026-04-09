@@ -45,19 +45,20 @@ export class AuthController {
     return this.authService.signUp(createUserDto);
   }
 
-  @Post('refresh')
-  async refresh(@Body() body: { userId: string; refreshToken: string }) {
-    return this.authService.refreshTokens(body.userId, body.refreshToken);
-  }
+  // @Post('refresh')
+  // async refresh(@Body() body: { userId: string; refreshToken: string }) {
+  //   return this.authService.refreshTokens(body.userId, body.refreshToken);
+  // }
 
   @UseGuards(JWTAuthGuard)
-  @Get('logout')
+  @Post('logout')
   logout(@Req() req: any) {
     this.authService.logout(req.user['sub']);
   }
 
   @UseGuards(RefreshTokenGuard)
-  @Get('refresh')
+  @Post('refresh')
+  @HttpCode(200)
   refreshTokens(@Req() req: any) {
     const userId = req.user['sub'];
     const refreshToken = req.user['refreshToken'];

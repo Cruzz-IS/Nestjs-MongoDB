@@ -76,13 +76,11 @@ export class UsersService {
 
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<IUser> {
     const updateData = { ...updateUserDto };
-    // if (updateData.password) {
-    //   updateData.password = await bcrypt.hash(updateData.password, 10);
-    // }
 
     const user = await this.userModel
-      .findByIdAndUpdate(id, updateData, { new: true })
+      .findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
       .exec();
+
     if (!user) throw new NotFoundException('Usuario no encontrado');
     return user;
   }
@@ -93,14 +91,40 @@ export class UsersService {
     return { deleted: true };
   }
 
-  async updateRefreshToken(userId: string, refreshToken: string | null) {
-    // Si pasamos null seria el (logout) donde borramos el token. Si no, lo hasheamos.
-    const hashedRefreshToken = refreshToken
-      ? await this.hashData(refreshToken)
-      : null;
+  // async updateRefreshToken(userId: string, refreshToken: string | null) {
+  //   const hashedToken = refreshToken ? await this.hashData(refreshToken) : null;
 
-    return this.userModel.findByIdAndUpdate(userId, {
-      refreshToken: hashedRefreshToken,
-    });
+  //   return await this.userModel.findByIdAndUpdate(
+  //     userId,
+  //     { refreshToken: hashedToken },
+  //     { returnDocument: 'after', lean: true },
+  //   );
+  // }
+  async updateRefreshToken(userId: string, refreshToken: string | null) {
+    let hashedToken: string | null = null;
+
+    if (refreshToken) {
+      // HASHEAMOS el token antes de guardarlo
+      hashedToken = await argon2.hash(refreshToken);
+    }
+
+    return await this.userModel.findByIdAndUpdate(
+      userId,
+      { refreshToken: hashedToken }, // Guardamos el HASH
+      { returnDocument: 'after' },
+    );
   }
+
+  // async updateRefreshToken(userId: string, refreshToken: string | null) {
+  //   // Si pasamos null seria el (logout) donde borramos el token. Si no, lo hasheamos.
+  //   const hashedRefreshToken = refreshToken
+  //  //   ? await this.hashData(refreshToken)
+  //     : null;
+
+  //   return await this.userModel.findByIdAndUpdate(
+  //     userId,
+  //     { refreshTokenHash: refreshToken },
+  //     { returnDocument: 'after' },
+  //   );
+  // }
 }
